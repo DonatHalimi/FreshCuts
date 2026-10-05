@@ -1,0 +1,25 @@
+{
+  "name": "freshcuts",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FreshCuts barber and personal-care booking platform",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "start": "concurrently \"npm run dev --prefix frontend\" \"npm start --prefix backend\"",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "npm run format --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend",
+    "db:studio": "npm run db:studio --workspace backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
+}

@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --color-bg: 17 18 17;
+  --color-surface: 25 27 25;
+  --color-surface-2: 34 37 34;
+  --color-line: 48 53 48;
+  --color-sage: 163 177 138;
+  --color-sage-dark: 125 143 104;
+  --color-sage-bright: 193 208 165;
+  --color-text: 242 241 236;
+  --color-muted: 167 170 162;
+  --color-danger: 220 100 100;
+}
+
+html {
+  min-width: 320px;
+  background: rgb(var(--color-bg));
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background-color: rgb(var(--color-bg));
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgb(var(--color-line));
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--color-sage-dark));
+}
+
+*::-webkit-scrollbar-corner {
+  background-color: rgb(var(--color-bg));
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--color-line)) rgb(var(--color-bg));
+}
+
+::selection {
+  background: rgb(var(--color-sage));
+  color: rgb(var(--color-bg));
+}
+
+:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgb(var(--color-sage-bright));
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}

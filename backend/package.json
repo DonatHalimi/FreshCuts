@@ -1,0 +1,47 @@
+{
+  "name": "freshcuts-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "db:migrate": "prisma migrate dev --name init",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19",
+    "bcrypt": "^6.0.0",
+    "compression": "^1.8.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.6",
+    "pino": "^9.7.0",
+    "pino-http": "^10.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "nodemon": "^3.1.10",
+    "pino-pretty": "^13.1.1",
+    "prettier": "^3.6.2",
+    "prisma": "6.19",
+    "supertest": "^7.1.4",
+    "vitest": "^3.2.4"
+  }
+}
