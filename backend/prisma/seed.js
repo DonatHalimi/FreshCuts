@@ -1,106 +1,98 @@
-import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
+import prisma from '../src/database/prisma.js';
 
-const prisma = new PrismaClient();
-
-const providers = [
-  {
-    name: 'Ardit Krasniqi',
-    title: 'Master Barber',
-    bio: 'Specializes in fades, clean classic cuts, and modern styling.',
-    imageUrl: null,
-  },
-  {
-    name: 'Luan Berisha',
-    title: 'Senior Barber',
-    bio: 'Focused on precision fades, beard shaping, and low-maintenance styles.',
-    imageUrl: null,
-  },
-  {
-    name: 'Eli Fara',
-    title: 'Stylist',
-    bio: 'Known for textured cuts, styling, and polished everyday looks.',
-    imageUrl: null,
-  },
-];
-
-const services = [
-  {
-    name: 'Classic Haircut',
-    description: 'A clean, tailored cut finished with styling.',
-    durationMin: 30,
-    priceCents: 1500,
-  },
-  {
-    name: 'Skin Fade',
-    description: 'Detailed fade with a precise neckline and finish.',
-    durationMin: 40,
-    priceCents: 1800,
-  },
-  {
-    name: 'Haircut + Beard',
-    description: 'Full haircut with beard trim and shape-up.',
-    durationMin: 50,
-    priceCents: 2200,
-  },
-  {
-    name: 'Beard Trim',
-    description: 'Shape, trim, neckline, and finishing product.',
-    durationMin: 20,
-    priceCents: 900,
-  },
-  {
-    name: 'Kids Haircut',
-    description: 'A simple, comfortable haircut for younger clients.',
-    durationMin: 25,
-    priceCents: 1200,
-  },
-  {
-    name: 'Hot Towel Shave',
-    description: 'Traditional straight-razor shave with hot towel prep and aftercare.',
-    durationMin: 30,
-    priceCents: 1600,
-  },
-];
+const passwordHash = await bcrypt.hash('FreshCuts123!', 12);
 
 async function main() {
-  for (const service of services) {
-    await prisma.service.upsert({
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@freshcuts.local' },
+    update: {},
+    create: {
+      email: 'admin@freshcuts.local',
+      passwordHash,
+      firstName: 'FreshCuts',
+      lastName: 'Admin',
+      role: 'ADMIN',
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  const staffData = [
+    { firstName: 'Ardit', lastName: 'Krasniqi', email: 'ardit@freshcuts.local', title: 'Master Barber', bio: 'Specializes in fades, clean classic cuts, and modern styling.' },
+    { firstName: 'Luan', lastName: 'Berisha', email: 'luan@freshcuts.local', title: 'Senior Barber', bio: 'Focused on precision fades, beard shaping, and low-maintenance styles.' },
+    { firstName: 'Eli', lastName: 'Fara', email: 'eli@freshcuts.local', title: 'Stylist', bio: 'Known for textured cuts, styling, and polished everyday looks.' },
+  ];
+
+  const providers = [];
+
+  for (const staff of staffData) {
+    const user = await prisma.user.upsert({
+      where: { email: staff.email },
+      update: {},
+      create: {
+        email: staff.email,
+        passwordHash,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        role: 'PROVIDER',
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    const providerName = `${staff.firstName} ${staff.lastName}`;
+    const provider = await prisma.provider.upsert({
+      where: { userId: user.id },
+      update: { name: providerName, title: staff.title, bio: staff.bio },
+      create: {
+        userId: user.id,
+        name: providerName,
+        title: staff.title,
+        bio: staff.bio,
+      },
+    });
+
+    providers.push(provider);
+  }
+
+  const servicesData = [
+    { name: 'Classic Haircut', description: 'A clean, tailored cut finished with styling.', durationMin: 30, priceCents: 1500, bufferBeforeMin: 0, bufferAfterMin: 5 },
+    { name: 'Skin Fade', description: 'Detailed fade with a precise neckline and finish.', durationMin: 40, priceCents: 1800, bufferBeforeMin: 0, bufferAfterMin: 5 },
+    { name: 'Haircut + Beard', description: 'Full haircut with beard trim and shape-up.', durationMin: 50, priceCents: 2200, bufferBeforeMin: 0, bufferAfterMin: 10 },
+    { name: 'Beard Trim', description: 'Shape, trim, neckline, and finishing product.', durationMin: 20, priceCents: 900, bufferBeforeMin: 0, bufferAfterMin: 5 },
+    { name: 'Kids Haircut', description: 'A simple, comfortable haircut for younger clients.', durationMin: 25, priceCents: 1200, bufferBeforeMin: 0, bufferAfterMin: 5 },
+    { name: 'Hot Towel Shave', description: 'Traditional straight-razor shave with hot towel prep and aftercare.', durationMin: 30, priceCents: 1600, bufferBeforeMin: 0, bufferAfterMin: 5 },
+  ];
+
+  const services = [];
+  for (const service of servicesData) {
+    const createdService = await prisma.service.upsert({
       where: { name: service.name },
       update: service,
       create: service,
     });
+    services.push(createdService);
   }
 
   for (const provider of providers) {
-    await prisma.provider.upsert({
-      where: { name: provider.name },
-      update: provider,
-      create: provider,
-    });
-  }
-
-  const providerRows = await prisma.provider.findMany({ select: { id: true } });
-  const serviceRows = await prisma.service.findMany({ select: { id: true } });
-
-  for (const provider of providerRows) {
-    for (const service of serviceRows) {
+    for (const service of services) {
       await prisma.providerService.upsert({
-        where: {
-          providerId_serviceId: {
-            providerId: provider.id,
-            serviceId: service.id,
-          },
-        },
+        where: { providerId_serviceId: { providerId: provider.id, serviceId: service.id } },
         update: {},
-        create: {
-          providerId: provider.id,
-          serviceId: service.id,
-        },
+        create: { providerId: provider.id, serviceId: service.id },
+      });
+    }
+
+    for (let day = 1; day <= 5; day += 1) {
+      await prisma.workingHour.create({
+        data: { providerId: provider.id, dayOfWeek: day, startMin: 540, endMin: 1080 },
+      });
+      await prisma.scheduleBreak.create({
+        data: { providerId: provider.id, dayOfWeek: day, startMin: 780, endMin: 840, label: 'Lunch' },
       });
     }
   }
 
-  console.log('FreshCuts seed complete.');
+  console.log(`FreshCuts v2 seed complete: 1 Admin, ${providers.length} Staff Providers, and ${services.length} Services created.`);
 }
 
 main()

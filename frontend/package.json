@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host localhost --port 5173",
+    "dev": "vite --host localhost --port 5173 --open",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

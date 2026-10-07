@@ -25,14 +25,14 @@ export default function ProfilePage() {
   };
 
   return (
-    <section className="mx-auto max-w-4xl space-y-6">
+    <section className="space-y-6">
       <header className="rounded-2xl border border-border bg-surface px-6 py-5">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sage">Account</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">Your profile</h1>
         <p className="mt-1.5 text-sm text-muted">Keep your personal details up to date.</p>
       </header>
 
-      <Card className="p-7 sm:p-9">
+      <Card className="p-7">
         {error ? <div className="mb-5"><Alert>{error.message}</Alert></div> : null}
 
         <div className="rounded-xl border border-border bg-background p-4">

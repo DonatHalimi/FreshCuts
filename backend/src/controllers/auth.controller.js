@@ -46,6 +46,22 @@ export async function refresh(req, res) {
   return sendSuccess(res, 200, { refreshed: true });
 }
 
+export async function staffLogin(req, res) {
+  const result = await authService.login(req.body, requestMeta(req), ['PROVIDER', 'ADMIN']);
+  setAuthCookies(res, result);
+  return sendSuccess(res, 200, { user: result.user });
+}
+
+export async function forgotPassword(req, res) {
+  await authService.forgotPassword(req.body.email);
+  return sendSuccess(res, 202, { message: 'If an account exists for that email, a reset link has been sent.' });
+}
+
+export async function resetPassword(req, res) {
+  await authService.resetPassword(req.body.token, req.body.password);
+  return sendSuccess(res, 200, { reset: true });
+}
+
 export async function logout(req, res) {
   await authService.logout(req.cookies?.fc_refresh);
   clearAuthCookies(res);

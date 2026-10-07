@@ -53,7 +53,10 @@ export default function HomePage() {
               ['Clear service details', 'Price and duration are always visible'],
               ['Ready for booking', 'The scheduling engine is the next phase'],
             ].map(([title, text]) => (
-              <div key={title} className="flex gap-3 rounded-xl border border-border bg-background p-4">
+              <div
+                key={title}
+                className="flex gap-3 rounded-xl border border-border bg-background p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-sage/40 hover:shadow-sm"
+              >
                 <div className="mt-0.5 text-sage"><ShieldCheck className="h-5 w-5" /></div>
                 <div><div className="text-sm font-semibold">{title}</div><div className="mt-1 text-xs leading-5 text-muted">{text}</div></div>
               </div>
@@ -73,7 +76,10 @@ export default function HomePage() {
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
-            <Card key={service.id} className="p-5">
+            <Card
+              key={service.id}
+              className="p-5 transition-all duration-200 hover:-translate-y-1 hover:border-sage/50 hover:shadow-md cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="font-semibold">{service.name}</h3>

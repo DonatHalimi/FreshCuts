@@ -14,7 +14,7 @@ import {
     Shield,
     User,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { NavLink, useNavigate } from 'react-router-dom';
 import logoBlackIcon from '../../assets/icon.png';
@@ -22,6 +22,7 @@ import { logout } from '../../store/authSlice.js';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 64;
+const STORAGE_KEY = 'mainSidebar:expanded';
 
 const SECTIONS = [
     {
@@ -64,7 +65,20 @@ const SECTIONS = [
 ];
 
 export default function Sidebar() {
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        return stored === null ? true : stored === 'true';
+    });
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(STORAGE_KEY, String(expanded));
+        } catch {
+            // ignore write errors (private mode, quota, etc.)
+        }
+    }, [expanded]);
+
     const [openSections, setOpenSections] = useState(() =>
         Object.fromEntries(SECTIONS.map((s) => [s.id, true]))
     );
@@ -87,7 +101,7 @@ export default function Sidebar() {
             initial={false}
             animate={{ width: expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
             transition={{ type: 'spring', stiffness: 260, damping: 30 }}
-            className="relative z-30 flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface"
+            className="relative z-30 flex h-fit flex-col overflow-hidden rounded-2xl border border-border bg-surface"
             style={{ boxShadow: '0 18px 50px rgba(0,0,0,0.24)' }}
         >
             <div className={`flex h-16 items-center border-b border-border ${expanded ? 'gap-2 px-3' : 'justify-center px-0'}`}>
@@ -104,7 +118,7 @@ export default function Sidebar() {
                                 <img
                                     src={logoBlackIcon}
                                     alt=""
-                                    className="h-6 w-6 object-contaiN"
+                                    className="h-6 w-6 object-contain"
                                 />
                             </span>
                         </motion.div>

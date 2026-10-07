@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 import { fetchMe } from './store/authSlice.js';
+import ScrollToTop from './components/ui/ScrollToTop.jsx';
 
 export default function App() {
   const dispatch = useDispatch();
@@ -13,5 +14,10 @@ export default function App() {
     dispatch(fetchMe());
   }, [dispatch]);
 
-  return <Outlet />;
+  return (
+    <>
+      <ScrollToTop />
+      <Outlet />
+    </>
+  );
 }

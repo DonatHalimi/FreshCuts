@@ -2,22 +2,11 @@ import { Outlet } from 'react-router-dom';
 import Header from './Header.jsx';
 import Footer from './Footer.jsx';
 
-export default function AppShell({ sidebar }) {
-  if (sidebar) {
-    return (
-      <div className="flex min-h-screen bg-background text-text">
-        {sidebar}
-        <main className="min-w-0 flex-1">
-          <Outlet />
-        </main>
-      </div>
-    );
-  }
-
+export default function AppShell() {
   return (
-    <div className="min-h-screen bg-background text-text">
+    <div className="flex min-h-screen flex-col bg-background text-text">
       <Header />
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
       <Footer />

@@ -13,20 +13,42 @@ enum Role {
   ADMIN
 }
 
-model User {
-  id              String                  @id @default(uuid()) @db.Uuid
-  email           String                  @unique @db.VarChar(254)
-  passwordHash    String
-  firstName       String                  @db.VarChar(60)
-  lastName        String                  @db.VarChar(60)
-  phone           String?                 @db.VarChar(30)
-  role            Role                    @default(CLIENT)
-  emailVerifiedAt DateTime?
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  refreshTokens   RefreshToken[]
-  verifyTokens    EmailVerificationToken[]
+enum AppointmentStatus {
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
 
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model User {
+  id                    String                    @id @default(uuid()) @db.Uuid
+  email                 String                    @unique @db.VarChar(254)
+  passwordHash          String
+  firstName             String                    @db.VarChar(60)
+  lastName              String                    @db.VarChar(60)
+  phone                 String?                   @db.VarChar(30)
+  role                  Role                      @default(CLIENT)
+  isActive              Boolean                   @default(true)
+  emailVerifiedAt       DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  refreshTokens         RefreshToken[]
+  verifyTokens          EmailVerificationToken[]
+  resetTokens           PasswordResetToken[]
+  provider              Provider?
+  appointments          Appointment[]             @relation("CustomerAppointments")
+  notifications         Notification[]
+  auditLogs             AuditLog[]                 @relation("AuditActor")
+  createdTimeOff        TimeOff[]                 @relation("TimeOffCreator")
+
+  @@index([role])
   @@index([createdAt])
 }
 
@@ -60,31 +82,53 @@ model EmailVerificationToken {
   @@index([expiresAt])
 }
 
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Provider {
-  id        String             @id @default(uuid()) @db.Uuid
-  name      String             @unique
-  title     String?            @db.VarChar(100)
-  bio       String?            @db.Text
-  imageUrl  String?
-  isActive  Boolean            @default(true)
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  services  ProviderService[]
+  id           String             @id @default(uuid()) @db.Uuid
+  userId       String?            @unique @db.Uuid
+  name         String             @db.VarChar(100)
+  title        String?            @db.VarChar(100)
+  bio          String?            @db.Text
+  imageUrl     String?
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  user         User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  services     ProviderService[]
+  workingHours WorkingHour[]
+  breaks       ScheduleBreak[]
+  timeOff      TimeOff[]
+  appointments Appointment[]      @relation("ProviderAppointments")
 
   @@index([isActive])
   @@index([name])
 }
 
 model Service {
-  id          String             @id @default(uuid()) @db.Uuid
-  name        String             @unique @db.VarChar(100)
-  description String?            @db.Text
-  durationMin Int
-  priceCents  Int
-  isActive    Boolean            @default(true)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  providers   ProviderService[]
+  id             String             @id @default(uuid()) @db.Uuid
+  name           String             @unique @db.VarChar(100)
+  description    String?            @db.Text
+  durationMin    Int
+  priceCents     Int
+  bufferBeforeMin Int               @default(0)
+  bufferAfterMin  Int               @default(0)
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  providers      ProviderService[]
+  appointments   Appointment[]
 
   @@index([isActive])
   @@index([name])
@@ -99,4 +143,120 @@ model ProviderService {
 
   @@id([providerId, serviceId])
   @@index([serviceId])
+}
+
+model WorkingHour {
+  id         String   @id @default(uuid()) @db.Uuid
+  providerId String   @db.Uuid
+  dayOfWeek Int
+  startMin  Int
+  endMin    Int
+  isActive  Boolean  @default(true)
+  provider  Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, dayOfWeek])
+}
+
+model ScheduleBreak {
+  id         String   @id @default(uuid()) @db.Uuid
+  providerId String   @db.Uuid
+  dayOfWeek Int
+  startMin  Int
+  endMin    Int
+  label      String?  @db.VarChar(100)
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, dayOfWeek])
+}
+
+model TimeOff {
+  id          String   @id @default(uuid()) @db.Uuid
+  providerId  String   @db.Uuid
+  startAt     DateTime
+  endAt       DateTime
+  reason      String?  @db.VarChar(255)
+  createdById String   @db.Uuid
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("TimeOffCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@index([providerId, startAt, endAt])
+}
+
+model Appointment {
+  id                     String            @id @default(uuid()) @db.Uuid
+  customerId             String            @db.Uuid
+  providerId             String            @db.Uuid
+  serviceId              String            @db.Uuid
+  scheduledStartAt       DateTime
+  scheduledEndAt         DateTime
+  blockStartAt           DateTime
+  blockEndAt             DateTime
+  serviceNameSnapshot    String            @db.VarChar(100)
+  durationMinSnapshot    Int
+  priceCentsSnapshot     Int
+  bufferBeforeMinSnapshot Int
+  bufferAfterMinSnapshot  Int
+  status                 AppointmentStatus @default(CONFIRMED)
+  cancellationReason     String?           @db.VarChar(255)
+  notes                  String?           @db.Text
+  clientRequestId        String?           @db.VarChar(100)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  customer               User               @relation("CustomerAppointments", fields: [customerId], references: [id], onDelete: Restrict)
+  provider               Provider           @relation("ProviderAppointments", fields: [providerId], references: [id], onDelete: Restrict)
+  service                Service            @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@unique([customerId, clientRequestId])
+  @@index([customerId, scheduledStartAt])
+  @@index([providerId, scheduledStartAt])
+  @@index([status, scheduledStartAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  type      String   @db.VarChar(80)
+  title     String   @db.VarChar(160)
+  message   String   @db.Text
+  link      String?
+  readAt    DateTime?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model EmailOutbox {
+  id             String       @id @default(uuid()) @db.Uuid
+  type           String       @db.VarChar(80)
+  toEmail        String       @db.VarChar(254)
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now())
+  lastError      String?      @db.Text
+  lockedAt       DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, nextAttemptAt])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String   @db.VarChar(100)
+  entityType  String   @db.VarChar(100)
+  entityId    String?  @db.Uuid
+  metadata    Json?
+  ipAddress   String?  @db.VarChar(64)
+  userAgent   String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId])
 }

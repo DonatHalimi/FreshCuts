@@ -35,7 +35,10 @@ export default function ServicesPage() {
       ) : (
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
-            <Card key={service.id} className="p-6">
+            <Card
+              key={service.id}
+              className="p-6 transition-all duration-200 hover:-translate-y-1 hover:border-sage/50 hover:shadow-md cursor-pointer"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="grid h-10 w-10 place-items-center rounded-lg border border-border bg-surface-2 text-sage"><Scissors className="h-4 w-4" /></div>
                 <span className="text-sm font-semibold text-sage-bright">{money(service.priceCents)}</span>

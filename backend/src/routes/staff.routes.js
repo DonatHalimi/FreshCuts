@@ -1,0 +1,20 @@
+import { Router } from 'express';
+import { authenticate } from '../../auth/authenticate.js';
+import { requireRole } from '../../middleware/requireRole.js';
+import { asyncHandler } from '../../utils/asyncHandler.js';
+import * as controller from '../controllers/staff.controller.js';
+import * as schedule from '../controllers/schedule.controller.js';
+import { validate } from '../../middleware/validate.js';
+import { rangesSchema, timeOffSchema, idSchema } from '../validations/schedule.validation.js';
+
+const router = Router();
+router.use(authenticate, requireRole('PROVIDER', 'ADMIN'));
+router.get('/me', asyncHandler(controller.me));
+router.get('/roster', asyncHandler(controller.roster));
+router.patch('/appointments/:id/status', asyncHandler(controller.updateStatus));
+router.get('/schedule', asyncHandler(schedule.getSchedule));
+router.put('/schedule/working-hours', validate(rangesSchema), asyncHandler(schedule.replaceWorkingHours));
+router.put('/schedule/breaks', validate(rangesSchema), asyncHandler(schedule.replaceBreaks));
+router.post('/schedule/time-off', validate(timeOffSchema), asyncHandler(schedule.createTimeOff));
+router.delete('/schedule/time-off/:id', validate(idSchema, 'params'), asyncHandler(schedule.deleteTimeOff));
+export default router;
