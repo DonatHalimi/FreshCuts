@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { Outlet } from 'react-router-dom';
+import AppShell from './components/layout/AppShell.jsx';
 import { fetchMe } from './store/authSlice.js';
 import ScrollToTop from './components/ui/ScrollToTop.jsx';
 
@@ -17,7 +17,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
-      <Outlet />
+      <AppShell />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import prisma from '../database/prisma.js';
+import prisma from '../src/database/prisma.js';
 
 export async function cleanupExpiredData() {
   const now = new Date();
@@ -9,4 +9,3 @@ export async function cleanupExpiredData() {
     prisma.emailOutbox.deleteMany({ where: { status: 'SENT', sentAt: { lt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } } }),
   ]);
 }
-sp

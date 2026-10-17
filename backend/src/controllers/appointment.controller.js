@@ -1,6 +1,6 @@
-import * as service from './appointment.service.js';
-import { create as createBooking } from './booking.service.js';
-import { sendSuccess } from '../../utils/response.js';
+import * as service from '../services/appointment.service.js';
+import { create as createBooking } from '../services/booking.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 export async function create(req, res) {
   const appointment = await createBooking({
@@ -9,13 +9,13 @@ export async function create(req, res) {
     serviceId: req.body.serviceId,
     startAt: req.body.startAt,
     notes: req.body.notes,
-    clientRequestId: req.get('Idempotency-Key'),
+    clientRequestId: req.validatedHeaders['Idempotency-Key'],
   });
   return sendSuccess(res, 201, appointment);
 }
 
 export async function list(req, res) {
-  return sendSuccess(res, 200, await service.listForCustomer(req.auth.userId, req.query.status));
+  return sendSuccess(res, 200, await service.listForCustomer(req.auth.userId, req.validatedQuery.status));
 }
 
 export async function get(req, res) {

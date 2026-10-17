@@ -1,4 +1,4 @@
-import prisma from '../../database/prisma.js';
+import prisma from '../database/prisma.js';
 import { queueNotification } from './outbox.service.js';
 
 export async function notifyAppointmentConfirmed({ userId, appointmentId, serviceName, providerName }) {

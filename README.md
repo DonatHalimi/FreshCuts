@@ -1,6 +1,6 @@
 # FreshCuts
 
-FreshCuts is a modern personal-care booking platform for barber shops and stylists. The first release is intentionally small: customer authentication, verified accounts, profiles, and a public directory of services and providers. Booking, availability, payments, notifications, and administration are planned next.
+FreshCuts is a personal-care booking platform for barber shops and stylists. The current foundation includes customer accounts, a public service/provider directory, dynamic availability, appointment booking and management, and role-protected staff/admin workflows.
 
 ## Architecture
 
@@ -26,20 +26,21 @@ The project is designed to run directly on the host operating system. PostgreSQL
 - Browse services
 - Browse providers/stylists/barbers
 - Provider detail page with supported services
+- Browse live availability calculated from provider hours, breaks, time off, service duration, and existing appointments
+- Create, view, cancel, and reschedule appointments
+- Idempotent booking requests and transactional conflict protection
+- Staff schedule and roster tools, plus basic admin dashboard and management endpoints
+- Appointment notifications and queued transactional email
 - Consistent validation and API error handling
 
 ### Deliberately deferred
 
-- Appointment creation
-- Dynamic availability
-- Provider working hours and time off
-- Appointment cancellation/rescheduling
-- SMS notifications
 - Payments/deposits
-- Admin dashboard
+- SMS reminders and waitlists
+- Point of sale, inventory, payroll, and commissions
 - Reviews and loyalty
-- Password reset
-- Social authentication beyond the initial Google-ready architecture
+- Marketing automation and advanced analytics
+- Social authentication
 
 ## Project structure
 
@@ -218,17 +219,22 @@ npm run db:migrate
 npm run db:seed
 ```
 
-The seed adds example barbers/stylists and services so the directory is immediately populated.
+The seed adds example barbers/stylists and services so the directory is immediately populated. It also creates the `global_header`, `user_dropdown`, `user_profile_sidebar`, `admin_panel`, and `staff_panel` navigation menus.
+
+Administrators can manage menu items, permission visibility, hierarchy (up to three levels), and sibling order at `/admin/menus`. The frontend fetches the nested menus from `GET /api/v1/menus/:key`; admin item-management endpoints are under `/api/v1/menus/admin`. Route guards and API authorization remain the security boundary—hiding a menu item does not grant or revoke access to its destination.
 
 ### 6. Start development
 
 ```powershell
-npm run dev
+npm start
 ```
 
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:5000`
+- Email outbox worker: started alongside the app
 - Health endpoint: `http://localhost:5000/api/v1/health`
+
+`npm run dev:frontend` and `npm run dev:backend` start the individual workspaces. To run the outbox worker separately, use `npm run worker --workspace backend`.
 
 Everything runs as normal Windows processes and uses your local PostgreSQL installation.
 
@@ -245,6 +251,8 @@ http://localhost:5173/verify-email?token=...
 The frontend verification page sends the token to the API using `POST /auth/verify-email`. This avoids treating an email link `GET` request as the state-changing verification action.
 
 For development, provide SMTP credentials in `.env`. When `SMTP_HOST` is omitted in development, Nodemailer creates a temporary test account and logs a preview URL instead of requiring a local mail server. Production should use a verified sending domain and a provider such as SendGrid, Mailgun, or Amazon SES over SMTP.
+
+Appointment email messages are written to the database outbox with the related state change and delivered by the worker started by `npm start`. Failed deliveries are retried and logged.
 
 ## Authentication model
 
@@ -278,6 +286,9 @@ Base path: `/api/v1`
 | POST | `/auth/verify-email` | Public | Consume a verification token |
 | POST | `/auth/resend-verification` | Public | Issue a replacement token |
 | POST | `/auth/login` | Public | Set access and refresh cookies |
+| POST | `/auth/staff/login` | Public | Sign in provider/admin accounts |
+| POST | `/auth/forgot-password` | Public | Request a password reset |
+| POST | `/auth/reset-password` | Public | Consume a password reset token |
 | POST | `/auth/refresh` | Refresh cookie | Rotate the refresh token |
 | POST | `/auth/logout` | Optional cookie | Revoke current refresh token and clear cookies |
 
@@ -287,6 +298,20 @@ Base path: `/api/v1`
 |---|---|---|---|
 | GET | `/users/me` | Access cookie | Return current profile |
 | PATCH | `/users/me` | Access cookie | Update name/phone |
+
+### Booking and operations
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| GET | `/availability` | Public | Calculate available slots for a provider, service, and date |
+| GET/POST | `/appointments` | Access cookie | List appointments or create a booking |
+| GET | `/appointments/:id` | Access cookie | Get an owned appointment |
+| POST | `/appointments/:id/cancel` | Access cookie | Cancel an owned appointment |
+| POST | `/appointments/:id/reschedule` | Access cookie | Reschedule an owned appointment within provider availability |
+| GET | `/staff/me`, `/staff/roster` | Provider/admin | Get staff profile and daily appointments |
+| GET/PUT/POST/DELETE | `/staff/schedule/*` | Provider/admin | Read or update working hours, breaks, and time off |
+| GET | `/notifications` | Access cookie | List notifications |
+| GET | `/admin/*` | Admin | Dashboard and basic user/service management |
 
 ### Directory
 
@@ -342,6 +367,8 @@ Unknown server failures return a generic message and are logged internally inste
 - JWT signing and verification with the expected algorithm
 - expired and tampered JWT behavior
 - error normalization
+- Availability ranges, buffers, and occupied-slot exclusion
+- Appointment ownership, rescheduling constraints, and role-protected routes
 
 ### Backend integration tests against a real local PostgreSQL database
 
@@ -370,17 +397,13 @@ Unknown server failures return a generic message and are logged internally inste
 - failed refresh returns the user to the anonymous state
 - verification page displays success, invalid-token, and expired-token states
 
-## Build order for the next feature slices
+## Next feature slices
 
-1. Password reset
-2. Link `Provider` to an optional `User` record for staff login
-3. Provider working hours, breaks, and time off
-4. Dynamic availability calculation
-5. Appointment creation with transactional conflict protection
-6. Appointment lifecycle and customer notifications
-7. Admin dashboard
-8. Payments/deposits
-9. Reviews, loyalty, and analytics
+1. Payments and configurable deposits/cancellation policies
+2. Scheduled email/SMS reminders and cancellation waitlists
+3. Stronger staff operations, then POS and inventory
+4. Client style notes, verified reviews, and loyalty
+5. Marketing automation and business analytics
 
 For booking, do not copy GoldCinema's showtime model literally. FreshCuts needs a scheduling engine that calculates bookable windows from provider working hours, breaks, time off, service duration, and existing appointments.
 

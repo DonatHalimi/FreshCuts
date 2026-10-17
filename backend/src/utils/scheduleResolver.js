@@ -1,4 +1,4 @@
-import { combineDateAndMinutes } from '../../shared/utils/dates.js';
+import { combineDateAndMinutes } from '../shared/utils/dates.js';
 import { subtractMany } from './timeRange.js';
 
 function dayOfWeekMondayFirst(date) {

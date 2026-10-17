@@ -1,68 +1,19 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-    Bell,
-    CalendarClock,
     ChevronDown,
     ChevronsLeft,
-    Heart,
-    Home,
-    LockKeyhole,
-    LogOut,
-    MessagesSquare,
-    Scissors,
-    Settings,
-    Shield,
-    User,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { NavLink, useNavigate } from 'react-router-dom';
 import logoBlackIcon from '../../assets/icon.png';
 import { logout } from '../../store/authSlice.js';
+import { useMenu } from '../../hooks/useMenu.js';
+import { MenuIcon } from './menuIcons.jsx';
 
 const EXPANDED_WIDTH = 260;
 const COLLAPSED_WIDTH = 64;
 const STORAGE_KEY = 'mainSidebar:expanded';
-
-const SECTIONS = [
-    {
-        id: 'main',
-        title: 'Discover',
-        icon: Home,
-        items: [
-            { to: '/', label: 'Home', icon: Home },
-            { to: '/providers', label: 'Providers', icon: Scissors },
-            { to: '/services', label: 'Services', icon: CalendarClock },
-        ],
-    },
-    {
-        id: 'account',
-        title: 'Account',
-        icon: Settings,
-        items: [
-            { to: '/profile', label: 'Profile', icon: User },
-            { to: '/appointments', label: 'Appointments', icon: CalendarClock },
-            { to: '/favourites', label: 'Favourites', icon: Heart },
-        ],
-    },
-    {
-        id: 'communication',
-        title: 'Communication',
-        icon: MessagesSquare,
-        items: [
-            { to: '/notifications', label: 'Notifications', icon: Bell },
-            { to: '/reviews', label: 'Reviews', icon: MessagesSquare },
-        ],
-    },
-    {
-        id: 'security',
-        title: 'Security',
-        icon: LockKeyhole,
-        items: [
-            { to: '/security', label: 'Security', icon: Shield },
-        ],
-    },
-];
 
 export default function Sidebar() {
     const [expanded, setExpanded] = useState(() => {
@@ -75,19 +26,46 @@ export default function Sidebar() {
         try {
             window.localStorage.setItem(STORAGE_KEY, String(expanded));
         } catch {
-            // ignore write errors (private mode, quota, etc.)
         }
     }, [expanded]);
 
-    const [openSections, setOpenSections] = useState(() =>
-        Object.fromEntries(SECTIONS.map((s) => [s.id, true]))
-    );
+    const { menu, error: menuError } = useMenu('user_profile_sidebar');
+    const [openSections, setOpenSections] = useState({});
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
 
     const toggleSection = (id) =>
         setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
+
+    const renderMenuItems = (items, depth = 0) => items.map((item) => {
+        if (item.href) {
+            return (
+                <div key={item.id} className="space-y-1">
+                    <SidebarItem item={item} expanded={expanded} depth={depth} />
+                    {item.children?.length ? (
+                        <div className="space-y-1">{renderMenuItems(item.children, depth + 1)}</div>
+                    ) : null}
+                </div>
+            );
+        }
+
+        const isOpen = openSections[item.id] ?? true;
+        return (
+            <div key={item.id} className="space-y-1">
+                <button
+                    type="button"
+                    onClick={() => toggleSection(item.id)}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted hover:bg-surface-2 hover:text-text ${depth ? 'ml-2' : ''}`}
+                >
+                    {item.iconKey ? <MenuIcon iconKey={item.iconKey} className="h-4 w-4" /> : null}
+                    {expanded ? item.label : null}
+                    <ChevronDown className={`ml-auto h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {isOpen ? <div className="space-y-1">{renderMenuItems(item.children ?? [], depth + 1)}</div> : null}
+            </div>
+        );
+    });
 
     const handleLogout = async () => {
         await dispatch(logout());
@@ -102,7 +80,6 @@ export default function Sidebar() {
             animate={{ width: expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH }}
             transition={{ type: 'spring', stiffness: 260, damping: 30 }}
             className="relative z-30 flex h-fit flex-col overflow-hidden rounded-2xl border border-border bg-surface"
-            style={{ boxShadow: '0 18px 50px rgba(0,0,0,0.24)' }}
         >
             <div className={`flex h-16 items-center border-b border-border ${expanded ? 'gap-2 px-3' : 'justify-center px-0'}`}>
                 <AnimatePresence initial={false}>
@@ -164,14 +141,14 @@ export default function Sidebar() {
             </div>
 
             <nav className="flex-1 space-y-2 overflow-y-auto px-2 py-4">
-                {SECTIONS.map((section) => {
-                    const SectionIcon = section.icon;
-                    const isOpen = openSections[section.id];
+                {menuError ? <div className="px-3 py-2 text-xs text-red-300">{menuError}</div> : null}
+                {(menu?.items ?? []).map((section) => {
+                    const isOpen = openSections[section.id] ?? true;
 
                     return (
                         <div key={section.id} className="space-y-1">
                             <AnimatePresence initial={false}>
-                                {expanded && (
+                                {expanded && section.children?.length ? (
                                     <motion.button
                                         type="button"
                                         initial={{ opacity: 0, height: 0 }}
@@ -182,8 +159,8 @@ export default function Sidebar() {
                                         className="flex w-full items-center justify-between px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted transition-colors hover:text-text"
                                     >
                                         <div className="flex items-center gap-2 whitespace-nowrap">
-                                            <SectionIcon className="h-3.5 w-3.5" />
-                                            <span>{section.title}</span>
+                                            <MenuIcon iconKey={section.iconKey} className="h-3.5 w-3.5" />
+                                            <span>{section.label}</span>
                                         </div>
                                         <motion.div
                                             animate={{ rotate: isOpen ? 180 : 0 }}
@@ -192,7 +169,7 @@ export default function Sidebar() {
                                             <ChevronDown className="h-3.5 w-3.5" />
                                         </motion.div>
                                     </motion.button>
-                                )}
+                                ) : null}
                             </AnimatePresence>
 
                             <AnimatePresence initial={false}>
@@ -204,13 +181,8 @@ export default function Sidebar() {
                                         transition={{ duration: 0.2, ease: 'easeInOut' }}
                                         className="space-y-1 overflow-hidden"
                                     >
-                                        {section.items.map((item) => (
-                                            <SidebarItem
-                                                key={item.to}
-                                                {...item}
-                                                expanded={expanded}
-                                            />
-                                        ))}
+                                        {section.href ? <SidebarItem item={section} expanded={expanded} /> : null}
+                                        {renderMenuItems(section.children ?? [], 0)}
                                     </motion.div>
                                 )}
                             </AnimatePresence>
@@ -221,8 +193,7 @@ export default function Sidebar() {
 
             <div className="border-t border-border p-2">
                 <SidebarItem
-                    icon={LogOut}
-                    label="Log out"
+                    item={{ label: 'Log out', iconKey: 'logout' }}
                     expanded={expanded}
                     onClick={handleLogout}
                 />
@@ -231,12 +202,12 @@ export default function Sidebar() {
     );
 }
 
-function SidebarItem({ to, icon: Icon, label, expanded, onClick }) {
+function SidebarItem({ item, expanded, onClick, depth = 0 }) {
     const content = (isActive) => (
         <motion.div
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.98 }}
-            className={`relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? 'text-sage-bright' : 'text-muted hover:text-text'
+            className={`relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${depth ? 'ml-2' : ''} ${isActive ? 'text-sage-bright' : 'text-muted hover:text-text'
                 }`}
         >
             {isActive && (
@@ -248,7 +219,7 @@ function SidebarItem({ to, icon: Icon, label, expanded, onClick }) {
             )}
 
             <span className="relative z-10 shrink-0">
-                <Icon className="h-5 w-5" />
+                <MenuIcon iconKey={item.iconKey} className="h-5 w-5" />
             </span>
 
             <AnimatePresence initial={false}>
@@ -260,24 +231,16 @@ function SidebarItem({ to, icon: Icon, label, expanded, onClick }) {
                         transition={{ duration: 0.12 }}
                         className="relative z-10 whitespace-nowrap"
                     >
-                        {label}
+                        {item.label}
                     </motion.span>
                 )}
             </AnimatePresence>
         </motion.div>
     );
 
-    if (onClick) {
-        return (
-            <button type="button" onClick={onClick} className="block w-full text-left">
-                {content(false)}
-            </button>
-        );
+    if (onClick) return <button type="button" onClick={onClick} className="block w-full text-left">{content(false)}</button>;
+    if (/^https:\/\//i.test(item.href ?? '')) {
+        return <a href={item.href} target={item.openInNewTab ? '_blank' : undefined} rel={item.openInNewTab ? 'noopener noreferrer' : undefined} className="block">{content(false)}</a>;
     }
-
-    return (
-        <NavLink to={to} className="block">
-            {({ isActive }) => content(isActive)}
-        </NavLink>
-    );
+    return <NavLink end={item.href === '/'} to={item.href || '/'} className="block">{({ isActive }) => content(isActive)}</NavLink>;
 }

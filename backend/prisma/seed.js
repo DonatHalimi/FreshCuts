@@ -3,8 +3,130 @@ import prisma from '../src/database/prisma.js';
 
 const passwordHash = await bcrypt.hash('FreshCuts123!', 12);
 
+const menuSeeds = [
+  {
+    key: 'global_header',
+    label: 'Main navigation',
+    items: [
+      { key: 'home', label: 'Home', href: '/', iconKey: 'home' },
+      { key: 'providers', label: 'Providers', href: '/providers', iconKey: 'scissors' },
+      { key: 'services', label: 'Services', href: '/services', iconKey: 'calendar' },
+      { key: 'appointments', label: 'Appointments', href: '/account/appointments', iconKey: 'calendar', requiredPermissions: ['appointments.read'] },
+      { key: 'login', label: 'Log in', href: '/login', requiredPermissions: ['guest.read'] },
+      { key: 'register', label: 'Create account', href: '/register', requiredPermissions: ['guest.read'] },
+    ],
+  },
+  {
+    key: 'user_dropdown',
+    label: 'User menu',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', href: '/admin', iconKey: 'dashboard', requiredPermissions: ['admin.read'] },
+      { key: 'profile', label: 'Profile', href: '/profile', iconKey: 'user', requiredPermissions: ['account.read'] },
+      { key: 'appointments', label: 'Appointments', href: '/account/appointments', iconKey: 'calendar', requiredPermissions: ['appointments.read'] },
+      { key: 'history', label: 'Service history', href: '/account/history', iconKey: 'clock', requiredPermissions: ['account.read'] },
+    ],
+  },
+  {
+    key: 'user_profile_sidebar',
+    label: 'Account sidebar',
+    items: [
+      {
+        key: 'discover',
+        label: 'Discover',
+        iconKey: 'home',
+        children: [
+          { key: 'home', label: 'Home', href: '/', iconKey: 'home' },
+          { key: 'providers', label: 'Providers', href: '/providers', iconKey: 'scissors' },
+          { key: 'services', label: 'Services', href: '/services', iconKey: 'calendar' },
+        ],
+      },
+      {
+        key: 'account',
+        label: 'Account',
+        iconKey: 'settings',
+        children: [
+          { key: 'profile', label: 'Profile', href: '/profile', iconKey: 'user', requiredPermissions: ['account.read'] },
+          { key: 'appointments', label: 'Appointments', href: '/account/appointments', iconKey: 'calendar', requiredPermissions: ['appointments.read'] },
+          { key: 'history', label: 'Service history', href: '/account/history', iconKey: 'clock', requiredPermissions: ['account.read'] },
+          { key: 'notifications', label: 'Notifications', href: '/account/notifications', iconKey: 'bell', requiredPermissions: ['account.read'] },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'admin_panel',
+    label: 'Admin dashboard',
+    items: [
+      {
+        key: 'admin_pages',
+        label: 'Admin pages',
+        iconKey: 'security',
+        requiredPermissions: ['admin.read'],
+        children: [
+          { key: 'dashboard', label: 'Dashboard', href: '/admin', iconKey: 'dashboard', requiredPermissions: ['admin.read'] },
+          { key: 'appointments', label: 'Appointments', href: '/admin/appointments', iconKey: 'calendar', requiredPermissions: ['admin.read'] },
+          { key: 'users', label: 'Users', href: '/admin/users', iconKey: 'users', requiredPermissions: ['admin.read'] },
+          { key: 'providers', label: 'Barbers', href: '/admin/providers', iconKey: 'user', requiredPermissions: ['admin.read'] },
+          { key: 'services', label: 'Services', href: '/admin/services', iconKey: 'scissors', requiredPermissions: ['admin.read'] },
+          { key: 'menus', label: 'Navigation menus', href: '/admin/menus', iconKey: 'menu', requiredPermissions: ['admin.read'] },
+        ],
+      },
+    ],
+  },
+  {
+    key: 'staff_panel',
+    label: 'Staff portal',
+    items: [
+      {
+        key: 'staff_pages',
+        label: 'Staff pages',
+        iconKey: 'user',
+        requiredPermissions: ['staff.read'],
+        children: [
+          { key: 'dashboard', label: 'Dashboard', href: '/staff', iconKey: 'dashboard', requiredPermissions: ['staff.read'] },
+          { key: 'roster', label: 'Roster', href: '/staff/roster', iconKey: 'calendar', requiredPermissions: ['staff.read'] },
+          { key: 'schedule', label: 'Schedule', href: '/staff/schedule', iconKey: 'clock', requiredPermissions: ['staff.read'] },
+          { key: 'profile', label: 'Profile', href: '/staff/profile', iconKey: 'user', requiredPermissions: ['staff.read'] },
+        ],
+      },
+    ],
+  },
+];
+
+async function seedMenus() {
+  for (const menuSeed of menuSeeds) {
+    const menu = await prisma.menu.upsert({
+      where: { key: menuSeed.key },
+      update: {},
+      create: { key: menuSeed.key, label: menuSeed.label },
+    });
+
+    async function seedItems(items, parentId = null) {
+      for (const [position, item] of items.entries()) {
+        const menuItem = await prisma.menuItem.upsert({
+          where: { menuId_key: { menuId: menu.id, key: item.key } },
+          update: {},
+          create: {
+            menuId: menu.id,
+            key: item.key,
+            parentId,
+            label: item.label,
+            href: item.href ?? null,
+            iconKey: item.iconKey ?? null,
+            requiredPermissions: item.requiredPermissions ?? [],
+            position,
+          },
+        });
+        if (item.children) await seedItems(item.children, menuItem.id);
+      }
+    }
+
+    await seedItems(menuSeed.items);
+  }
+}
+
 async function main() {
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'admin@freshcuts.local' },
     update: {},
     create: {
@@ -16,6 +138,8 @@ async function main() {
       emailVerifiedAt: new Date(),
     },
   });
+
+  await seedMenus();
 
   const staffData = [
     { firstName: 'Ardit', lastName: 'Krasniqi', email: 'ardit@freshcuts.local', title: 'Master Barber', bio: 'Specializes in fades, clean classic cuts, and modern styling.' },
@@ -42,7 +166,7 @@ async function main() {
     const providerName = `${staff.firstName} ${staff.lastName}`;
     const provider = await prisma.provider.upsert({
       where: { userId: user.id },
-      update: { name: providerName, title: staff.title, bio: staff.bio },
+      update: { name: providerName, title: staff.title, bio: staff.bio, isActive: true },
       create: {
         userId: user.id,
         name: providerName,
@@ -82,13 +206,24 @@ async function main() {
       });
     }
 
-    for (let day = 1; day <= 5; day += 1) {
-      await prisma.workingHour.create({
-        data: { providerId: provider.id, dayOfWeek: day, startMin: 540, endMin: 1080 },
+    for (let day = 1; day <= 6; day += 1) {
+      const workingHour = await prisma.workingHour.findFirst({
+        where: { providerId: provider.id, dayOfWeek: day },
       });
-      await prisma.scheduleBreak.create({
-        data: { providerId: provider.id, dayOfWeek: day, startMin: 780, endMin: 840, label: 'Lunch' },
+      if (!workingHour) {
+        await prisma.workingHour.create({
+          data: { providerId: provider.id, dayOfWeek: day, startMin: 540, endMin: 1080 },
+        });
+      }
+
+      const scheduleBreak = await prisma.scheduleBreak.findFirst({
+        where: { providerId: provider.id, dayOfWeek: day },
       });
+      if (!scheduleBreak) {
+        await prisma.scheduleBreak.create({
+          data: { providerId: provider.id, dayOfWeek: day, startMin: 780, endMin: 840, label: 'Lunch' },
+        });
+      }
     }
   }
 

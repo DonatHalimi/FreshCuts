@@ -1,4 +1,4 @@
-import { addMinutes } from '../../shared/utils/dates.js';
+import { addMinutes } from '../shared/utils/dates.js';
 import { overlaps } from './timeRange.js';
 
 export function generateSlots({ ranges, durationMin, bufferBeforeMin = 0, bufferAfterMin = 0, intervalMin = 15, existing = [], now = new Date() }) {

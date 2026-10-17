@@ -1,5 +1,5 @@
 import * as service from '../services/schedule.service.js';
-import { sendSuccess } from '../../utils/response.js';
+import { sendSuccess } from '../utils/response.js';
 export const getSchedule = async (req, res) => sendSuccess(res, 200, await service.getSchedule(req.auth.userId));
 export const replaceWorkingHours = async (req, res) => sendSuccess(res, 200, await service.replaceWorkingHours(req.auth.userId, req.body.entries));
 export const replaceBreaks = async (req, res) => sendSuccess(res, 200, await service.replaceBreaks(req.auth.userId, req.body.entries));

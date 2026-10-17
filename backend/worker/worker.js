@@ -1,5 +1,5 @@
-import logger from '../config/logger.js';
-import prisma from '../database/prisma.js';
+import logger from '../src/config/logger.js';
+import prisma from '../src/database/prisma.js';
 import { processEmails } from './emailWorker.js';
 import { cleanupExpiredData } from './cleanupWorker.js';
 

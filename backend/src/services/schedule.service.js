@@ -1,5 +1,5 @@
-import prisma from '../../database/prisma.js';
-import { AppError } from '../../utils/AppError.js';
+import prisma from '../database/prisma.js';
+import { AppError } from '../utils/AppError.js';
 
 async function providerForUser(userId) {
   const provider = await prisma.provider.findUnique({ where: { userId } });

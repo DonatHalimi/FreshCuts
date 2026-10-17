@@ -1,10 +1,10 @@
 import crypto from 'node:crypto';
-import prisma from '../../database/prisma.js';
-import env from '../../config/env.js';
-import { hashPassword } from '../../auth/password.js';
-import { sha256 } from '../../shared/utils/hash.js';
-import { AppError } from '../../utils/AppError.js';
-import { queueEmail } from '../notifications/outbox.service.js';
+import prisma from '../database/prisma.js';
+import env from '../config/env.js';
+import { hashPassword } from '../auth/password.js';
+import { sha256 } from '../utils/hash.js';
+import { AppError } from '../utils/AppError.js';
+import { queueEmail } from './outbox.service.js';
 
 export async function issue(email) {
   const user = await prisma.user.findUnique({

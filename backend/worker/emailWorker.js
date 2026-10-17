@@ -1,30 +1,7 @@
-import prisma from '../database/prisma.js';
-import logger from '../config/logger.js';
-import { sendMail, sendTemplateEmail } from '../shared/mail/mailer.js';
-
-const APPOINTMENT_TEMPLATES = {
-  APPOINTMENT_CONFIRMED: ({ firstName, providerName, serviceName, startAt }) => ({
-    subject: 'Your FreshCuts appointment is confirmed',
-    text: `Hi ${firstName}, your ${serviceName} appointment with ${providerName} is confirmed for ${new Date(startAt).toLocaleString()}.`,
-    html: `<p>Hi ${firstName},</p><p>Your <strong>${serviceName}</strong> appointment with <strong>${providerName}</strong> is confirmed.</p><p>${new Date(startAt).toLocaleString()}</p>`,
-  }),
-  APPOINTMENT_UPDATED: ({ firstName, providerName, serviceName, startAt }) => ({
-    subject: 'Your FreshCuts appointment was updated',
-    text: `Hi ${firstName}, your ${serviceName} appointment with ${providerName} is now scheduled for ${new Date(startAt).toLocaleString()}.`,
-    html: `<p>Hi ${firstName},</p><p>Your appointment was updated to <strong>${new Date(startAt).toLocaleString()}</strong>.</p>`,
-  }),
-  APPOINTMENT_CANCELLED: ({ firstName, providerName, serviceName, startAt }) => ({
-    subject: 'Your FreshCuts appointment was cancelled',
-    text: `Hi ${firstName}, your ${serviceName} appointment with ${providerName} on ${new Date(startAt).toLocaleString()} was cancelled.`,
-    html: `<p>Hi ${firstName},</p><p>Your appointment was cancelled.</p>`,
-  }),
-};
-
-function buildAppointmentMail(type, payload) {
-  const builder = APPOINTMENT_TEMPLATES[type];
-  if (!builder) throw new Error(`Unsupported outbox type: ${type}`);
-  return builder(payload);
-}
+import prisma from '../src/database/prisma.js';
+import logger from '../src/config/logger.js';
+import { sendMail, sendTemplateEmail } from '../src/shared/mail/mailer.js';
+import { appointmentEmail } from '../src/templates/email/appointmentEmail.js';
 
 export async function processEmails(limit = 20) {
   const jobs = await prisma.emailOutbox.findMany({
@@ -39,7 +16,7 @@ export async function processEmails(limit = 20) {
       if (job.type === 'EMAIL_VERIFICATION' || job.type === 'PASSWORD_RESET') {
         await sendTemplateEmail(job.type, job.toEmail, job.payload);
       } else {
-        const message = buildAppointmentMail(job.type, job.payload);
+        const message = appointmentEmail(job.type, job.payload);
         await sendMail({ to: job.toEmail, ...message });
       }
       await prisma.emailOutbox.update({ where: { id: job.id }, data: { status: 'SENT', sentAt: new Date(), lockedAt: null } });

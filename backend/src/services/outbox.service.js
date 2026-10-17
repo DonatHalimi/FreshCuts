@@ -1,4 +1,4 @@
-import prisma from '../../database/prisma.js';
+import prisma from '../database/prisma.js';
 
 export function queueEmail(type, toEmail, payload) {
   return prisma.emailOutbox.create({ data: { type, toEmail, payload } });

@@ -9,6 +9,7 @@ import Input from '../components/ui/Input.jsx';
 import Button from '../components/ui/Button.jsx';
 import Alert from '../components/ui/Alert.jsx';
 import Card from '../components/ui/Card.jsx';
+import AuthLayout from '../components/layout/AuthLayout.jsx';
 import * as authApi from '../services/auth.api.js';
 
 export default function RegisterPage() {
@@ -44,8 +45,8 @@ export default function RegisterPage() {
 
   if (created) {
     return (
-      <section className="mx-auto max-w-lg px-5 py-16">
-        <Card className="p-7 sm:p-9">
+      <AuthLayout>
+        <Card className="p-6 sm:p-8">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sage">Almost there</div>
           <h1 className="mt-2 text-3xl font-semibold">Verify your email.</h1>
           <p className="mt-4 text-sm leading-6 text-muted">We sent a verification link to <span className="text-text">{created}</span>. Open it to activate your account.</p>
@@ -56,13 +57,13 @@ export default function RegisterPage() {
             <Link to="/login" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-4 text-sm font-semibold text-text hover:bg-surface-2">Back to login</Link>
           </div>
         </Card>
-      </section>
+      </AuthLayout>
     );
   }
 
   return (
-    <section className="mx-auto max-w-lg px-5 py-28">
-      <Card className="p-8">
+    <AuthLayout>
+      <Card className="p-6 sm:p-8">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sage">FreshCuts account</div>
         <h1 className="mt-2 text-3xl font-semibold">Create your account.</h1>
         {error ? <div className="mt-5"><Alert>{error.message}</Alert></div> : null}
@@ -115,6 +116,6 @@ export default function RegisterPage() {
           Already have an account? <Link to="/login" className="text-sage-bright hover:text-text">Log in</Link>
         </p>
       </Card>
-    </section>
+    </AuthLayout>
   );
 }

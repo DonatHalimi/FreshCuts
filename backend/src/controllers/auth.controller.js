@@ -43,6 +43,7 @@ export async function login(req, res) {
 export async function refresh(req, res) {
   const result = await authService.refresh(req.cookies?.fc_refresh, requestMeta(req));
   setAuthCookies(res, result);
+  res.set('Cache-Control', 'no-store');
   return sendSuccess(res, 200, { refreshed: true });
 }
 

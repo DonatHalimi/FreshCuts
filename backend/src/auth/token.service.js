@@ -17,10 +17,16 @@ export function signAccess(user) {
   );
 }
 
-export function buildRefresh(userId, familyId = crypto.randomUUID()) {
-  const jti = crypto.randomUUID();
+export function buildRefresh(userId, familyId = crypto.randomUUID(), options = {}) {
+  const jti = options.jti ?? crypto.randomUUID();
+  const createdAt = options.issuedAt ?? new Date();
   const token = jwt.sign(
-    { sub: userId, fam: familyId, jti },
+    {
+      sub: userId,
+      fam: familyId,
+      jti,
+      ...(options.issuedAt ? { iat: Math.floor(createdAt.getTime() / 1000) } : {}),
+    },
     env.jwtRefreshSecret,
     { algorithm: 'HS256', expiresIn: seconds(env.refreshTtlMs) },
   );
@@ -31,8 +37,8 @@ export function buildRefresh(userId, familyId = crypto.randomUUID()) {
       userId,
       familyId,
       tokenHash: sha256(jti),
-      expiresAt: new Date(Date.now() + env.refreshTtlMs),
-      createdAt: new Date(),
+      expiresAt: new Date(createdAt.getTime() + env.refreshTtlMs),
+      createdAt,
     },
   };
 }
@@ -45,11 +51,83 @@ export function verifyRefresh(token) {
   return jwt.verify(token, env.jwtRefreshSecret, { algorithms: ['HS256'] });
 }
 
-async function revokeFamily(familyId) {
-  await prisma.refreshToken.updateMany({
-    where: { familyId, revokedAt: null },
-    data: { revokedAt: new Date() },
+function invalidRefreshError(message = 'Session expired') {
+  return new AppError(401, 'REFRESH_INVALID', message);
+}
+
+function successorJti(familyId, parentJti) {
+  return crypto
+    .createHmac('sha256', env.jwtRefreshSecret)
+    .update(`refresh-rotation:${familyId}:${parentJti}`)
+    .digest('base64url');
+}
+
+async function rotateWithinTransaction(tx, payload, meta) {
+  let row = await tx.refreshToken.findUnique({
+    where: { tokenHash: sha256(payload.jti) },
   });
+  if (!row || row.familyId !== payload.fam || row.userId !== payload.sub || row.expiresAt < new Date()) {
+    return null;
+  }
+
+  let rotatedAt;
+  if (row.revokedAt) {
+    if (Date.now() - row.revokedAt.getTime() > env.refreshReuseGraceMs) {
+      await tx.refreshToken.updateMany({
+        where: { familyId: row.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return null;
+    }
+    rotatedAt = row.revokedAt;
+  } else {
+    rotatedAt = new Date();
+    const updated = await tx.refreshToken.updateMany({
+      where: { id: row.id, revokedAt: null },
+      data: { revokedAt: rotatedAt },
+    });
+
+    if (updated.count === 0) {
+      row = await tx.refreshToken.findUnique({ where: { id: row.id } });
+      if (!row?.revokedAt || Date.now() - row.revokedAt.getTime() > env.refreshReuseGraceMs) {
+        if (row) {
+          await tx.refreshToken.updateMany({
+            where: { familyId: row.familyId, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+        }
+        return null;
+      }
+      rotatedAt = row.revokedAt;
+    }
+  }
+
+  const user = await tx.user.findUnique({
+    where: { id: row.userId },
+    select: { id: true, role: true, isActive: true },
+  });
+  if (!user?.isActive) {
+    await tx.refreshToken.updateMany({
+      where: { familyId: row.familyId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return null;
+  }
+
+  const next = buildRefresh(user.id, row.familyId, {
+    jti: successorJti(row.familyId, payload.jti),
+    issuedAt: rotatedAt,
+  });
+  await tx.refreshToken.upsert({
+    where: { tokenHash: next.record.tokenHash },
+    update: {},
+    create: { ...next.record, ...meta },
+  });
+
+  return {
+    accessToken: signAccess(user),
+    refreshToken: next.jwt,
+  };
 }
 
 export async function createRefreshSession(userId, meta = {}) {
@@ -75,51 +153,9 @@ export async function rotateRefreshToken(rawToken, meta = {}) {
     throw new AppError(401, 'REFRESH_INVALID', 'Refresh token invalid');
   }
 
-  const row = await prisma.refreshToken.findUnique({
-    where: { tokenHash: sha256(payload.jti) },
-  });
-
-  if (!row || row.expiresAt < new Date()) {
-    throw new AppError(401, 'REFRESH_INVALID', 'Session expired');
-  }
-
-  if (row.revokedAt) {
-    const graceAge = Date.now() - row.revokedAt.getTime();
-    if (graceAge > env.refreshReuseGraceMs) {
-      await revokeFamily(row.familyId);
-      throw new AppError(401, 'REFRESH_INVALID', 'Session expired');
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: row.userId },
-      select: { id: true, role: true },
-    });
-    if (!user) throw new AppError(401, 'REFRESH_INVALID', 'Session expired');
-
-    const next = buildRefresh(user.id, row.familyId);
-    await prisma.refreshToken.create({ data: { ...next.record, ...meta } });
-    return { accessToken: signAccess(user), refreshToken: next.jwt };
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: row.userId },
-    select: { id: true, role: true },
-  });
-  if (!user) throw new AppError(401, 'REFRESH_INVALID', 'Session expired');
-
-  const next = buildRefresh(user.id, row.familyId);
-  await prisma.$transaction([
-    prisma.refreshToken.update({
-      where: { id: row.id },
-      data: { revokedAt: new Date() },
-    }),
-    prisma.refreshToken.create({ data: { ...next.record, ...meta } }),
-  ]);
-
-  return {
-    accessToken: signAccess(user),
-    refreshToken: next.jwt,
-  };
+  const result = await prisma.$transaction((tx) => rotateWithinTransaction(tx, payload, meta));
+  if (!result) throw invalidRefreshError();
+  return result;
 }
 
 export async function revokeRefreshToken(rawToken) {
@@ -133,5 +169,6 @@ export async function revokeRefreshToken(rawToken) {
       data: { revokedAt: new Date() },
     });
   } catch {
+    return;
   }
 }

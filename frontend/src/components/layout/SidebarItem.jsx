@@ -9,7 +9,6 @@ export default function SidebarItem({ to, icon: Icon, label, expanded, active, o
             className={`relative flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${active ? 'text-sage-bright' : 'text-muted hover:text-text'
                 }`}
         >
-            {/* Active indicator — slides between items via layoutId */}
             {active && (
                 <motion.div
                     layoutId="sidebar-active"
@@ -18,12 +17,10 @@ export default function SidebarItem({ to, icon: Icon, label, expanded, active, o
                 />
             )}
 
-            {/* Icon */}
             <span className="relative z-10 shrink-0">
                 <Icon className="h-5 w-5" />
             </span>
 
-            {/* Label — animates in when expanded */}
             <motion.span
                 initial={false}
                 animate={{

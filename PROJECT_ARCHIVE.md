@@ -1,4 +1,4 @@
-# FreshCuts project archive manifest
+<!-- # FreshCuts project archive manifest
 
 The archive is intentionally native/local: PostgreSQL is expected to run as a normal host service and the application starts with npm scripts.
 
@@ -3837,4 +3837,4 @@ export default defineConfig({
   }
 }
 
-```
+``` -->

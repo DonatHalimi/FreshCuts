@@ -29,7 +29,7 @@ async function getTransporter() {
 
 export async function sendMail(message) {
   const transporter = await getTransporter();
-  const info = await transporter.sendMail({ from: env.mailFrom, ...message });
+  const info = await transporter.sendMail({ from: env.smtpFrom, ...message });
   const previewUrl = nodemailer.getTestMessageUrl(info);
   if (previewUrl) logger.info({ previewUrl }, 'Development email preview');
   return info;

@@ -9,6 +9,12 @@ export const createAppointmentSchema = Joi.object({
   notes: Joi.string().trim().max(1000).allow('').default(''),
 });
 
+export const idempotencyKeySchema = Joi.string().trim().min(1).max(100).required();
+
+export const appointmentListQuerySchema = Joi.object({
+  status: Joi.string().valid('CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'),
+});
+
 export const idSchema = Joi.object({ id: uuid.required() });
 
 export const rescheduleSchema = Joi.object({

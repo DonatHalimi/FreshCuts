@@ -1,17 +1,18 @@
 import { Router } from 'express';
-import { authenticate } from '../../auth/authenticate.js';
-import { requireRole } from '../../middleware/requireRole.js';
-import { asyncHandler } from '../../utils/asyncHandler.js';
+import { authenticate } from '../auth/authenticate.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
 import * as controller from '../controllers/staff.controller.js';
 import * as schedule from '../controllers/schedule.controller.js';
-import { validate } from '../../middleware/validate.js';
+import { validate } from '../middleware/validate.js';
 import { rangesSchema, timeOffSchema, idSchema } from '../validations/schedule.validation.js';
+import { rosterSchema, statusSchema } from '../validations/staff.validation.js';
 
 const router = Router();
 router.use(authenticate, requireRole('PROVIDER', 'ADMIN'));
 router.get('/me', asyncHandler(controller.me));
-router.get('/roster', asyncHandler(controller.roster));
-router.patch('/appointments/:id/status', asyncHandler(controller.updateStatus));
+router.get('/roster', validate(rosterSchema, 'query'), asyncHandler(controller.roster));
+router.patch('/appointments/:id/status', validate(idSchema, 'params'), validate(statusSchema), asyncHandler(controller.updateStatus));
 router.get('/schedule', asyncHandler(schedule.getSchedule));
 router.put('/schedule/working-hours', validate(rangesSchema), asyncHandler(schedule.replaceWorkingHours));
 router.put('/schedule/breaks', validate(rangesSchema), asyncHandler(schedule.replaceBreaks));

@@ -1,5 +1,5 @@
-import * as passwordReset from './passwordReset.service.js';
-import { sendSuccess } from '../../utils/response.js';
+import * as passwordReset from '../services/passwordReset.service.js';
+import { sendSuccess } from '../utils/response.js';
 
 export async function forgotPassword(req, res) {
   await passwordReset.issue(req.body.email.trim().toLowerCase());

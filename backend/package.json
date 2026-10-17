@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "worker": "node worker/worker.js",
     "db:migrate": "prisma migrate dev --name init",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
@@ -18,7 +19,7 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
-    "@prisma/client": "6.19",
+    "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.0",
     "cookie-parser": "^1.4.7",

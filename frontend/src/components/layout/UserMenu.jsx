@@ -1,14 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LogOut, Settings, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { logout } from '../../store/authSlice.js';
+import { useMenu } from '../../hooks/useMenu.js';
+import MenuLink from './MenuLink.jsx';
+import { MenuIcon } from './menuIcons.jsx';
 
 export default function UserMenu() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { user } = useSelector((state) => state.auth);
+    const { menu } = useMenu('user_dropdown');
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
@@ -73,7 +77,6 @@ export default function UserMenu() {
                         role="menu"
                         className="absolute right-0 top-full z-50 mt-2 w-60 origin-top-right overflow-hidden rounded-xl border border-border bg-surface shadow-panel"
                     >
-                        {/* User block with icon */}
                         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
                             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-sage/15 text-sage">
                                 <UserRound className="h-4 w-4" />
@@ -86,14 +89,8 @@ export default function UserMenu() {
                             </div>
                         </div>
 
-                        {/* Items */}
                         <div className="p-1.5">
-                            <MenuItem to="/profile" icon={UserRound} onSelect={() => setOpen(false)}>
-                                Profile
-                            </MenuItem>
-                            <MenuItem to="/account/settings" icon={Settings} onSelect={() => setOpen(false)}>
-                                Settings
-                            </MenuItem>
+                            <UserMenuItems items={menu?.items ?? []} onSelect={() => setOpen(false)} />
                         </div>
 
                         <div className="border-t border-border p-1.5">
@@ -114,16 +111,24 @@ export default function UserMenu() {
     );
 }
 
-function MenuItem({ to, icon: Icon, children, onSelect }) {
-    return (
-        <Link
-            to={to}
-            onClick={onSelect}
-            role="menuitem"
-            className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted transition-colors hover:bg-sage/10 hover:text-sage-bright"
-        >
-            <Icon className="h-4 w-4" />
-            {children}
-        </Link>
-    );
+function UserMenuItems({ items, onSelect, depth = 0 }) {
+    return items.map((item) => (
+        <div key={item.id} className={depth ? 'ml-3 border-l border-border pl-2' : ''}>
+            {item.href ? (
+                <MenuLink
+                    item={item}
+                    role="menuitem"
+                    onClick={onSelect}
+                    className={() => 'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-muted transition-colors hover:bg-sage/10 hover:text-sage-bright'}
+                    iconClassName="h-4 w-4"
+                />
+            ) : (
+                <div className="flex items-center gap-2 px-2.5 py-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                    {item.iconKey ? <MenuIcon iconKey={item.iconKey} className="h-4 w-4" /> : null}
+                    {item.label}
+                </div>
+            )}
+            {item.children?.length ? <UserMenuItems items={item.children} onSelect={onSelect} depth={depth + 1} /> : null}
+        </div>
+    ));
 }

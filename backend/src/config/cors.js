@@ -10,6 +10,6 @@ export const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'X-Requested-With', 'Idempotency-Key', 'X-CSRF-Token'],
   maxAge: 600,
 };

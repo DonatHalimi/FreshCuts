@@ -7,6 +7,7 @@ import Alert from '../components/ui/Alert.jsx';
 import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import Input from '../components/ui/Input.jsx';
+import AuthLayout from '../components/layout/AuthLayout.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import * as authApi from '../services/auth.api.js';
 import { clearAuthError, login } from '../store/authSlice.js';
@@ -47,11 +48,10 @@ export default function LoginPage() {
   };
 
   return (
-    <section className="mx-auto max-w-lg px-5 py-28">
-      <Card className="p-8">
+    <AuthLayout>
+      <Card className="p-6 sm:p-8">
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sage">FreshCuts account</div>
         <h1 className="mt-2 text-3xl font-semibold">Welcome back.</h1>
-        {/* <p className="mt-3 text-sm text-muted">Sign in to manage your account.</p> */}
 
         {error ? <div className="mt-5"><Alert>{error.message}</Alert></div> : null}
         {error?.code === 'EMAIL_NOT_VERIFIED' ? (
@@ -106,6 +106,6 @@ export default function LoginPage() {
           Need an account? <Link to="/register" className="text-sage-bright hover:text-text">Create one</Link>
         </p>
       </Card>
-    </section>
+    </AuthLayout>
   );
 }

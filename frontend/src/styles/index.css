@@ -76,9 +76,33 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+select option {
+  background-color: rgb(var(--color-surface));
+  color: rgb(var(--color-text));
+}
+
+input[type="checkbox"] {
+  accent-color: rgb(var(--color-sage));
+}
+
 button,
 input,
 select,
 textarea {
   font: inherit;
+}
+
+@layer components {
+  .page-title {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-sage;
+  }
+  .section-copy {
+    @apply text-sm leading-6 text-muted;
+  }
+  .admin-select {
+    @apply cursor-pointer rounded-xl border border-border bg-background px-3.5 text-sm text-text outline-none transition focus:border-sage focus:ring-2 focus:ring-sage/15 disabled:cursor-not-allowed disabled:opacity-60;
+  }
 }

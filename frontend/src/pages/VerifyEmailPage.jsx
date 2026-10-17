@@ -26,7 +26,6 @@ export default function VerifyEmailPage() {
 
     verifyEmail(token)
       .then((result) => {
-        // Backend now returns { verified: true, alreadyVerified: true|false }
         const already = Boolean(result?.alreadyVerified);
         setStatus('success');
         setMessage(already ? 'Your email is already verified.' : 'Your email has been verified.');
@@ -37,7 +36,6 @@ export default function VerifyEmailPage() {
         const httpStatus = error?.response?.status;
         const msg = error?.response?.data?.message;
 
-        // Token consumed but the account is verified — treat as success
         if (code === 'TOKEN_ALREADY_USED' || httpStatus === 410) {
           setStatus('success');
           setMessage('Your email is already verified.');

@@ -20,7 +20,36 @@ export function validate(schema, source = 'body') {
       });
     }
 
-    req[source] = value;
+    if (source === 'query') {
+      req.validatedQuery = value;
+    } else {
+      req[source] = value;
+    }
+    return next();
+  };
+}
+
+export function validateHeader(schema, headerName) {
+  return (req, _res, next) => {
+    const { value, error } = schema.validate(req.get(headerName), {
+      abortEarly: false,
+      convert: true,
+    });
+
+    if (error) {
+      const errors = error.details.map((detail) => ({
+        field: headerName,
+        message: detail.message,
+      }));
+      return next({
+        status: 422,
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid input',
+        errors,
+      });
+    }
+
+    req.validatedHeaders = { ...req.validatedHeaders, [headerName]: value };
     return next();
   };
 }

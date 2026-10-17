@@ -7,7 +7,7 @@ function normalizeError(error) {
   if (error instanceof AppError) return error;
 
   if (error instanceof TokenExpiredError) {
-    return new AppError(401, 'TOKEN_EXPIRED', 'Access token expired');
+    return new AppError(401, 'ACCESS_TOKEN_EXPIRED', 'Access token expired');
   }
 
   if (error instanceof JsonWebTokenError) {

@@ -1,6 +1,6 @@
-import prisma from '../../database/prisma.js';
-import { sendSuccess } from '../../utils/response.js';
-import { AppError } from '../../utils/AppError.js';
+import prisma from '../database/prisma.js';
+import { sendSuccess } from '../utils/response.js';
+import { AppError } from '../utils/AppError.js';
 
 async function getProviderForUser(userId) {
   const provider = await prisma.provider.findUnique({ where: { userId } });
@@ -15,7 +15,7 @@ export async function me(req, res) {
 
 export async function roster(req, res) {
   const provider = await getProviderForUser(req.auth.userId);
-  const date = new Date(req.query.date);
+  const date = new Date(req.validatedQuery.date);
   if (Number.isNaN(date.getTime())) throw new AppError(422, 'VALIDATION_ERROR', 'Invalid roster date');
   const next = new Date(date.getTime() + 24 * 60 * 60 * 1000);
 

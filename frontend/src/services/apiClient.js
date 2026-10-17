@@ -25,18 +25,21 @@ function normalizeError(error) {
   };
 }
 
+function isRefreshableAccessError(response, config) {
+  if (response?.status !== 401 || !config || config._retry) return false;
+  if (!['ACCESS_TOKEN_EXPIRED', 'ACCESS_TOKEN_MISSING'].includes(response.data?.code)) return false;
+
+  const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
+  return !/\/auth(?:\/|$)/i.test(url);
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const response = error?.response;
     const config = error?.config;
 
-    if (
-      response?.status === 401 &&
-      response.data?.code === 'TOKEN_EXPIRED' &&
-      config &&
-      !config._retry
-    ) {
+    if (isRefreshableAccessError(response, config)) {
       config._retry = true;
       refreshPromise ??= api.post('/auth/refresh').finally(() => {
         refreshPromise = null;
@@ -44,10 +47,16 @@ api.interceptors.response.use(
 
       try {
         await refreshPromise;
-        return api(config);
-      } catch {
-        onSessionExpired();
+      } catch (refreshError) {
+        if (
+          refreshError?.status === 401
+          && refreshError.code === 'REFRESH_INVALID'
+        ) {
+          onSessionExpired();
+        }
+        return Promise.reject(refreshError);
       }
+      return api(config);
     }
 
     return Promise.reject(normalizeError(error));

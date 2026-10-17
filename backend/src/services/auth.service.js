@@ -13,6 +13,7 @@ const SAFE_USER = {
   lastName: true,
   phone: true,
   role: true,
+  isActive: true,
   emailVerifiedAt: true,
   createdAt: true,
   updatedAt: true,
@@ -46,7 +47,7 @@ async function sendVerification(user) {
   }
 }
 
-export async function register(input) {
+export async function register(input, role = 'CLIENT') {
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
 
@@ -62,6 +63,7 @@ export async function register(input) {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
       phone: input.phone?.trim() || null,
+      role,
     },
     select: SAFE_USER,
   });
@@ -70,7 +72,71 @@ export async function register(input) {
   return toUser(user);
 }
 
-export async function login(input, meta = {}) {
+export async function updateAdminUser(userId, input) {
+  let emailChanged = false;
+  let user;
+
+  try {
+    user = await prisma.$transaction(async (tx) => {
+      const current = await tx.user.findUnique({
+        where: { id: userId },
+        select: SAFE_USER,
+      });
+      if (!current) throw new AppError(404, 'NOT_FOUND', 'User account not found');
+
+      const email = input.email !== undefined ? normalizeEmail(input.email) : current.email;
+      emailChanged = email !== current.email;
+      if (emailChanged) {
+        const existing = await tx.user.findUnique({ where: { email }, select: { id: true } });
+        if (existing) throw new AppError(409, 'EMAIL_TAKEN', 'An account with that email already exists');
+      }
+
+      const data = {
+        ...(input.firstName !== undefined ? { firstName: input.firstName.trim() } : {}),
+        ...(input.lastName !== undefined ? { lastName: input.lastName.trim() } : {}),
+        ...(input.email !== undefined ? { email } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}),
+        ...(input.role !== undefined ? { role: input.role } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(emailChanged ? { emailVerifiedAt: null } : {}),
+      };
+
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data,
+        select: SAFE_USER,
+      });
+
+      if (emailChanged) {
+        await tx.emailVerificationToken.deleteMany({
+          where: { userId, usedAt: null },
+        });
+      }
+      if (
+        emailChanged
+        || (input.role !== undefined && input.role !== current.role)
+        || (input.isActive !== undefined && input.isActive !== current.isActive)
+      ) {
+        await tx.refreshToken.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+
+      return updated;
+    });
+  } catch (error) {
+    if (error.code === 'P2002') {
+      throw new AppError(409, 'EMAIL_TAKEN', 'An account with that email already exists');
+    }
+    throw error;
+  }
+
+  if (emailChanged) await sendVerification(user);
+  return toUser(user);
+}
+
+export async function login(input, meta = {}, allowedRoles = null) {
   const email = normalizeEmail(input.email);
   const user = await prisma.user.findUnique({ where: { email } });
   const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
@@ -78,6 +144,10 @@ export async function login(input, meta = {}) {
 
   if (!user || !passwordMatches) {
     throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    throw new AppError(403, 'FORBIDDEN', 'You do not have permission to sign in here');
   }
 
   if (!user.emailVerifiedAt) {

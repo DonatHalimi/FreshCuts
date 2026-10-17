@@ -1,12 +1,11 @@
 import crypto from 'node:crypto';
-import prisma from '../../database/prisma.js';
-import { AppError } from '../../utils/AppError.js';
-import { addMinutes } from '../../shared/utils/dates.js';
-import { withSerializableRetry } from '../../database/transaction.js';
-import { ACTIVE_APPOINTMENT_STATUSES } from '../../shared/constants/appointmentStatus.js';
-import { resolveSchedule } from '../availability/scheduleResolver.js';
-import { overlaps } from '../availability/timeRange.js';
-import { queueEmail, queueNotification } from '../notifications/outbox.service.js';
+import prisma from '../database/prisma.js';
+import { AppError } from '../utils/AppError.js';
+import { addMinutes } from '../shared/utils/dates.js';
+import { withSerializableRetry } from '../database/transaction.js';
+import { ACTIVE_APPOINTMENT_STATUSES } from '../shared/constants/appointmentStatus.js';
+import { resolveSchedule } from '../utils/scheduleResolver.js';
+import { overlaps } from '../utils/timeRange.js';
 
 function getBlock(startAt, service) {
   const blockStart = addMinutes(startAt, -service.bufferBeforeMin);
@@ -32,29 +31,31 @@ async function loadBookingData(tx, customerId, providerId, serviceId) {
   return { provider, customer, service: relation.service, priceCents: relation.priceCents ?? relation.service.priceCents };
 }
 
-async function assertAvailable(tx, providerId, blockStart, blockEnd, excludeId = null) {
-  const conflict = await tx.appointment.findFirst({
-    where: {
-      providerId,
-      status: { in: ACTIVE_APPOINTMENT_STATUSES },
-      blockStartAt: { lt: blockEnd },
-      blockEndAt: { gt: blockStart },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    select: { id: true },
-  });
-  if (conflict) throw new AppError(409, 'SLOT_UNAVAILABLE', 'The selected appointment time is no longer available');
-}
-
 export async function create({ customerId, providerId, serviceId, startAt, notes = '', clientRequestId }) {
   const normalizedStart = new Date(startAt);
+  if (!Number.isFinite(normalizedStart.getTime())) {
+    throw new AppError(422, 'VALIDATION_ERROR', 'A valid appointment start time is required');
+  }
   if (normalizedStart <= new Date()) throw new AppError(422, 'PAST_APPOINTMENT', 'Appointments must be in the future');
 
-  const requestId = clientRequestId || crypto.randomUUID();
+  const requestId = clientRequestId?.trim() || crypto.randomUUID();
+  if (requestId.length > 100) {
+    throw new AppError(422, 'VALIDATION_ERROR', 'Idempotency key must be 100 characters or fewer');
+  }
 
   return withSerializableRetry(() => prisma.$transaction(async (tx) => {
     const idempotentAppointment = await tx.appointment.findFirst({ where: { customerId, clientRequestId: requestId } });
-    if (idempotentAppointment) return idempotentAppointment;
+    if (idempotentAppointment) {
+      const sameRequest =
+        idempotentAppointment.providerId === providerId &&
+        idempotentAppointment.serviceId === serviceId &&
+        idempotentAppointment.scheduledStartAt.getTime() === normalizedStart.getTime() &&
+        idempotentAppointment.notes === notes;
+      if (!sameRequest) {
+        throw new AppError(409, 'IDEMPOTENCY_KEY_REUSED', 'This booking request key was already used for different booking details');
+      }
+      return idempotentAppointment;
+    }
 
     const { provider, customer, service, priceCents } = await loadBookingData(tx, customerId, providerId, serviceId);
     const { serviceEnd, blockStart, blockEnd } = getBlock(normalizedStart, service);
@@ -72,8 +73,6 @@ export async function create({ customerId, providerId, serviceId, startAt, notes
     if (conflictingAppointments.some((item) => overlaps(blockStart, blockEnd, item.blockStartAt, item.blockEndAt))) {
       throw new AppError(409, 'SLOT_UNAVAILABLE', 'The selected appointment time is no longer available');
     }
-    await assertAvailable(tx, providerId, blockStart, blockEnd);
-
     const appointment = await tx.appointment.create({
       data: {
         customerId,

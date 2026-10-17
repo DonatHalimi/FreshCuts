@@ -3,7 +3,7 @@ import { verifyAccess } from './token.service.js';
 
 export function authenticate(req, _res, next) {
   const token = req.cookies?.fc_access;
-  if (!token) return next(new AppError(401, 'UNAUTHENTICATED', 'Authentication required'));
+  if (!token) return next(new AppError(401, 'ACCESS_TOKEN_MISSING', 'Access token missing'));
 
   try {
     const payload = verifyAccess(token);

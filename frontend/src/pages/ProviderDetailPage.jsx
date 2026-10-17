@@ -1,7 +1,8 @@
-import { ArrowLeft, Clock3, Scissors } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, Clock3, Scissors } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import Alert from '../components/ui/Alert.jsx';
+import Button from '../components/ui/Button.jsx';
 import Card from '../components/ui/Card.jsx';
 import Spinner from '../components/ui/Spinner.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
@@ -55,8 +56,13 @@ export default function ProviderDetailPage() {
             </div>
           </div>
 
-          <div className="mt-8 rounded-xl border border-dashed border-border bg-surface-2 p-4 text-sm text-muted">
-            Appointment scheduling is coming in the next FreshCuts feature slice.
+          <div className="mt-8">
+            <Link to={{ pathname: '/book', search: `?providerId=${encodeURIComponent(provider.id)}` }}>
+              <Button>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Book appointment
+              </Button>
+            </Link>
           </div>
         </Card>
       </div>

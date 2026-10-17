@@ -18,6 +18,15 @@ export const login = createAsyncThunk('auth/login', async (payload, { rejectWith
   }
 });
 
+export const staffLogin = createAsyncThunk('auth/staffLogin', async (payload, { rejectWithValue }) => {
+  try {
+    const result = await authApi.staffLogin(payload);
+    return result.user;
+  } catch (error) {
+    return rejectWithValue(error);
+  }
+});
+
 export const register = createAsyncThunk('auth/register', async (payload, { rejectWithValue }) => {
   try {
     return await authApi.register(payload);
@@ -84,6 +93,19 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
+        state.status = 'anonymous';
+        state.error = action.payload ?? { message: 'Unable to sign in.' };
+      })
+      .addCase(staffLogin.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(staffLogin.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.status = 'authenticated';
+        state.error = null;
+      })
+      .addCase(staffLogin.rejected, (state, action) => {
         state.status = 'anonymous';
         state.error = action.payload ?? { message: 'Unable to sign in.' };
       })

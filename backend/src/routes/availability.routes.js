@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../utils/asyncHandler.js';
-import { validate } from '../../middleware/validate.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { validate } from '../middleware/validate.js';
 import { availabilityQuerySchema } from '../validations/availability.validation.js';
 import * as controller from '../controllers/availability.controller.js';
 

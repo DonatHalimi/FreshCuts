@@ -28,16 +28,11 @@ export async function verify(rawToken) {
     include: { user: { select: { id: true, emailVerifiedAt: true } } },
   });
 
-  // Token not found at all — genuinely invalid, cannot recover
-  if (!record) {
-    throw new AppError(400, 'TOKEN_INVALID', 'This verification link is invalid');
-  }
+  if (!record) throw new AppError(400, 'TOKEN_INVALID', 'This verification link is invalid');
 
-  // Token already used — if the user ended up verified, treat as success
   if (record.usedAt) {
-    if (record.user?.emailVerifiedAt) {
-      return { alreadyVerified: true };
-    }
+    if (record.user?.emailVerifiedAt) return { alreadyVerified: true };
+
     throw new AppError(400, 'TOKEN_INVALID', 'This verification link is invalid or already used');
   }
 
@@ -50,6 +45,7 @@ export async function verify(rawToken) {
       where: { id: record.id },
       data: { usedAt: new Date() },
     }),
+
     prisma.user.update({
       where: { id: record.userId },
       data: { emailVerifiedAt: new Date() },

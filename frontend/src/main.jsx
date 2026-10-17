@@ -6,6 +6,7 @@ import { routes } from './routes.jsx';
 import { configureSessionExpiredHandler } from './services/apiClient.js';
 import { sessionExpired } from './store/authSlice.js';
 import { store } from './store/store.js';
+import ToastProvider from './components/ui/ToastProvider.jsx';
 import './styles/index.css';
 
 configureSessionExpiredHandler(() => {
@@ -17,7 +18,9 @@ const router = createBrowserRouter(routes);
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </Provider>
   </React.StrictMode>,
 );

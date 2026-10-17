@@ -1,14 +1,19 @@
-import prisma from '../../database/prisma.js';
-import env from '../../config/env.js';
-import { AppError } from '../../utils/AppError.js';
+import prisma from '../database/prisma.js';
+import env from '../config/env.js';
+import { AppError } from '../utils/AppError.js';
 import { resolveSchedule } from '../utils/scheduleResolver.js';
 import { generateSlots } from '../utils/slotGenerator.js';
-import { ACTIVE_APPOINTMENT_STATUSES } from '../../shared/constants/appointmentStatus.js';
+import { ACTIVE_APPOINTMENT_STATUSES } from '../shared/constants/appointmentStatus.js';
 
 export async function getAvailableSlots({ providerId, serviceId, date }) {
   const target = new Date(date);
   target.setHours(0, 0, 0, 0);
   const nextDay = new Date(target.getTime() + 24 * 60 * 60 * 1000);
+  const localDate = [
+    target.getFullYear(),
+    String(target.getMonth() + 1).padStart(2, '0'),
+    String(target.getDate()).padStart(2, '0'),
+  ].join('-');
 
   const [provider, service, appointments, timeOff] = await Promise.all([
     prisma.provider.findFirst({
@@ -50,7 +55,7 @@ export async function getAvailableSlots({ providerId, serviceId, date }) {
   return {
     providerId,
     serviceId,
-    date: target.toISOString().slice(0, 10),
+    date: localDate,
     timezone: env.shopTimezone,
     durationMin: service.service.durationMin,
     priceCents: service.priceCents ?? service.service.priceCents,
