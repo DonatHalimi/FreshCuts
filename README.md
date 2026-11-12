@@ -406,7 +406,3 @@ Unknown server failures return a generic message and are logged internally inste
 5. Marketing automation and business analytics
 
 For booking, do not copy GoldCinema's showtime model literally. FreshCuts needs a scheduling engine that calculates bookable windows from provider working hours, breaks, time off, service duration, and existing appointments.
-
-## License
-
-MIT
